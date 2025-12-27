@@ -1,0 +1,344 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>AI Response Variation</title>
+    <script src="https://cdn.tailwindcss.com"></script>
+    <script src="https://cdn.jsdelivr.net/npm/chart.js"></script>
+    <style>
+        @import url('https://fonts.googleapis.com/css2?family=Plus+Jakarta+Sans:wght@300;400;600;800&display=swap');
+        
+        body { 
+            font-family: 'Plus Jakarta Sans', sans-serif; 
+            background-color: #F8FAFC;
+            color: #1E293B;
+        }
+
+        .dashboard-card { 
+            background: white; 
+            border-radius: 24px; 
+            box-shadow: 0 10px 25px -5px rgba(0, 0, 0, 0.05);
+            border: 1px solid #E2E8F0;
+        }
+
+        .tab-btn.active {
+            background-color: #4F46E5;
+            color: white;
+            box-shadow: 0 4px 12px rgba(79, 70, 229, 0.3);
+        }
+
+        .chart-container { 
+            position: relative; 
+            width: 100%; 
+            height: 280px; 
+            max-height: 300px;
+        }
+
+        input[type=range] {
+            -webkit-appearance: none;
+            background: transparent;
+            cursor: pointer;
+        }
+        input[type=range]::-webkit-slider-runnable-track {
+            width: 100%;
+            height: 8px;
+            background: #E2E8F0;
+            border-radius: 4px;
+        }
+        input[type=range]::-webkit-slider-thumb {
+            -webkit-appearance: none;
+            height: 24px;
+            width: 24px;
+            border-radius: 50%;
+            background: #4F46E5;
+            margin-top: -8px;
+            border: 3px solid white;
+            box-shadow: 0 2px 4px rgba(0,0,0,0.1);
+        }
+
+        @keyframes fadeIn {
+            from { opacity: 0; transform: translateY(10px); }
+            to { opacity: 1; transform: translateY(0); }
+        }
+        .animate-word { animation: fadeIn 0.4s ease-out forwards; }
+    </style>
+</head>
+<body class="p-4 md:p-8 min-h-screen flex items-center justify-center">
+
+    <div class="max-w-6xl w-full">
+        
+        <!-- HEADER -->
+        <header class="text-center mb-8">
+            <h1 class="text-3xl md:text-5xl font-800 text-slate-900 tracking-tight">
+                AI Response Variation <span class="text-indigo-600">Lab</span>
+            </h1>
+            <p class="text-slate-500 mt-2 font-medium">Why does AI answer differently? Explore three levels of uncertainty.</p>
+        </header>
+
+        <!-- SCENARIO SWITCHER -->
+        <div class="flex flex-wrap justify-center gap-2 mb-6">
+            <button onclick="switchScenario('fact')" id="tab-fact" class="tab-btn active px-6 py-2 rounded-full text-sm font-bold transition-all border border-slate-200">📍 Factual (The Capital)</button>
+            <button onclick="switchScenario('creative')" id="tab-creative" class="tab-btn px-6 py-2 rounded-full text-sm font-bold transition-all border border-slate-200">🎨 Creative (The Robot)</button>
+            <button onclick="switchScenario('science')" id="tab-science" class="tab-btn px-6 py-2 rounded-full text-sm font-bold transition-all border border-slate-200">🌿 Educational (Photosynthesis)</button>
+        </div>
+
+        <!-- MAIN DASHBOARD -->
+        <div class="dashboard-card p-6 md:p-8">
+            
+            <!-- STAGE: THE OUTPUT -->
+            <div class="bg-indigo-50/50 rounded-2xl p-6 md:p-8 mb-8 text-center border border-indigo-100 min-h-[160px] flex flex-col justify-center">
+                <p id="scenarioLabel" class="text-[10px] font-bold text-indigo-400 uppercase tracking-widest mb-4">Factual Verification</p>
+                <div id="sentenceDisplay" class="text-xl md:text-3xl font-700 text-slate-800 leading-tight">
+                    "The capital of France is <span id="generatedWord" class="text-indigo-600 bg-white px-4 py-1 rounded-xl shadow-sm border border-indigo-200">_______</span>"
+                </div>
+            </div>
+
+            <!-- CONTROLS & VISUALS GRID -->
+            <div class="grid lg:grid-cols-2 gap-8 items-start">
+                
+                <!-- LEFT: ENGINE CONTROLS -->
+                <div class="space-y-6">
+                    <div class="bg-slate-50 p-6 rounded-2xl border border-slate-100">
+                        <div class="flex justify-between items-center mb-4">
+                            <h3 class="font-bold text-slate-800">1. Adjust "Chaos" (Temperature)</h3>
+                            <span id="chaosStatus" class="px-3 py-1 bg-indigo-100 text-indigo-700 text-[10px] font-bold rounded-full uppercase">Precise</span>
+                        </div>
+                        <input type="range" id="chaosSlider" min="0" max="100" value="10" class="w-full">
+                        <div class="flex justify-between mt-3 text-[10px] font-bold text-slate-400 uppercase">
+                            <span>Logic & Facts</span>
+                            <span>Risks & Creativity</span>
+                        </div>
+                    </div>
+
+                    <button id="generateBtn" class="w-full py-5 bg-indigo-600 hover:bg-indigo-700 text-white rounded-2xl font-bold text-xl shadow-lg transition-all active:scale-95 flex flex-col items-center">
+                        <span>🎲 GENERATE ANSWER</span>
+                        <span class="text-[10px] font-normal opacity-60 uppercase tracking-widest mt-1">Roll the probability dice</span>
+                    </button>
+
+                    <div id="scenarioExplanation" class="p-4 bg-amber-50 rounded-xl border border-amber-100 text-xs text-amber-800 italic">
+                        In factual mode, the AI is 99% sure. Even so, if you crank up the chaos, it might hallucinate!
+                    </div>
+                </div>
+
+                <!-- RIGHT: THE PROBABILITY BAR CHART -->
+                <div class="bg-slate-50 rounded-2xl p-6 border border-slate-100">
+                    <h3 class="text-sm font-bold text-slate-500 mb-4 flex justify-between uppercase tracking-wider">
+                        <span>2. The "Word Bag" Chances</span>
+                        <span id="tokenCountText" class="text-[10px]">Top 5 Options</span>
+                    </h3>
+                    <div class="chart-container">
+                        <canvas id="probChart"></canvas>
+                    </div>
+                </div>
+
+            </div>
+
+            <!-- MINI LOG -->
+            <div class="mt-8 pt-6 border-t border-slate-100 overflow-hidden">
+                <div class="flex items-center space-x-4">
+                    <span class="text-[10px] font-bold text-slate-400 uppercase tracking-widest shrink-0">Recent Results:</span>
+                    <div id="historyStrip" class="flex space-x-2 overflow-x-auto py-1 no-scrollbar">
+                        <span class="text-slate-300 text-xs italic">Awaiting first generation...</span>
+                    </div>
+                </div>
+            </div>
+        </div>
+
+        <!-- EXPLANATION FOOTER -->
+        <div class="mt-8 grid md:grid-cols-2 gap-6">
+            <div class="bg-white/60 backdrop-blur p-6 rounded-2xl border border-slate-200">
+                <h4 class="font-bold text-slate-800 mb-2 flex items-center">
+                    <span class="mr-2 text-indigo-500">💡</span> Why does the whole paragraph change?
+                </h4>
+                <p class="text-xs text-slate-500 leading-relaxed">
+                    This is called <b>Autoregression</b>. Because AI picks words one-by-one, picking an unlikely word for "Photosynthesis" early on (like 'Magic') completely derails the math for the <i>rest</i> of the explanation. One tiny shift changes the whole story!
+                </p>
+            </div>
+            <div class="bg-white/60 backdrop-blur p-6 rounded-2xl border border-slate-200">
+                <h4 class="font-bold text-slate-800 mb-2 flex items-center">
+                    <span class="mr-2 text-indigo-500">🎲</span> The "Dice Roll" Secret
+                </h4>
+                <p class="text-xs text-slate-500 leading-relaxed">
+                    Even for a fact like "Paris," the AI calculates a tiny 0.001% chance for words like "London" or "Pizza." When you increase <b>Chaos</b>, you're telling the AI: "Pay more attention to those tiny chances!"
+                </p>
+            </div>
+        </div>
+
+    </div>
+
+    <script>
+        // --- DATA & CONFIG ---
+        const scenarios = {
+            fact: {
+                label: "Factual Verification",
+                sentence: "The capital of France is",
+                explanation: "In factual mode, the AI is 99% sure. Even so, if you crank up the chaos, it might hallucinate!",
+                words: [
+                    { text: "Paris", weight: 98, color: "#4F46E5" },
+                    { text: "Lyon", weight: 1, color: "#10B981" },
+                    { text: "Marseille", weight: 0.5, color: "#F43F5E" },
+                    { text: "London", weight: 0.3, color: "#F59E0B" },
+                    { text: "Pizza", weight: 0.2, color: "#64748B" }
+                ]
+            },
+            creative: {
+                label: "Creative Storytelling",
+                sentence: "The friendly robot brought me a",
+                explanation: "Creative mode has more balanced chances. This is why AI writers feel 'inspired' and varied.",
+                words: [
+                    { text: "Flower", weight: 40, color: "#4F46E5" },
+                    { text: "Battery", weight: 25, color: "#10B981" },
+                    { text: "Letter", weight: 20, color: "#F43F5E" },
+                    { text: "Secret", weight: 10, color: "#F59E0B" },
+                    { text: "Spaceship", weight: 5, color: "#64748B" }
+                ]
+            },
+            science: {
+                label: "Paragraph Generation (Butterfly Effect)",
+                sentence: "Photosynthesis is the process where plants use",
+                explanation: "Scientific terms are specific. However, picking a wrong word here will destroy the logical flow of the entire paragraph.",
+                words: [
+                    { text: "Sunlight", weight: 85, color: "#4F46E5" },
+                    { text: "Water", weight: 8, color: "#10B981" },
+                    { text: "Sugar", weight: 4, color: "#F43F5E" },
+                    { text: "Magic", weight: 2, color: "#F59E0B" },
+                    { text: "Electricity", weight: 1, color: "#64748B" }
+                ]
+            }
+        };
+
+        let currentMode = 'fact';
+        let probChart;
+
+        // --- CHART INITIALIZATION ---
+        function initChart() {
+            const ctx = document.getElementById('probChart').getContext('2d');
+            probChart = new Chart(ctx, {
+                type: 'bar',
+                data: {
+                    labels: [],
+                    datasets: [{
+                        data: [],
+                        backgroundColor: [],
+                        borderRadius: 8,
+                        borderSkipped: false
+                    }]
+                },
+                options: {
+                    indexAxis: 'y',
+                    responsive: true,
+                    maintainAspectRatio: false,
+                    plugins: {
+                        legend: { display: false },
+                        tooltip: {
+                            callbacks: {
+                                title: (items) => items[0].label,
+                                label: (item) => `Chance: ${item.formattedValue}%`
+                            }
+                        }
+                    },
+                    scales: {
+                        x: { beginAtZero: true, max: 100, grid: { display: false }, ticks: { display: false } },
+                        y: { grid: { display: false }, ticks: { font: { weight: 'bold', size: 12 } } }
+                    }
+                }
+            });
+            updateSimulation();
+        }
+
+        // --- CORE LOGIC ---
+        function updateSimulation() {
+            const chaosVal = document.getElementById('chaosSlider').value / 100;
+            const data = scenarios[currentMode];
+            
+            // Update UI Labels
+            document.getElementById('scenarioLabel').innerText = data.label;
+            document.getElementById('scenarioExplanation').innerText = data.explanation;
+            document.getElementById('sentenceDisplay').innerHTML = `"${data.sentence} <span id="generatedWord" class="text-indigo-600 bg-white px-4 py-1 rounded-xl shadow-sm border border-indigo-200 transition-all">_______</span>"`;
+
+            const status = document.getElementById('chaosStatus');
+            if(chaosVal < 0.3) {
+                status.innerText = "Precise & Sharp";
+                status.className = "px-3 py-1 bg-indigo-100 text-indigo-700 text-[10px] font-bold rounded-full uppercase";
+            } else if (chaosVal < 0.7) {
+                status.innerText = "Creative & Balanced";
+                status.className = "px-3 py-1 bg-emerald-100 text-emerald-700 text-[10px] font-bold rounded-full uppercase";
+            } else {
+                status.innerText = "Total Chaos";
+                status.className = "px-3 py-1 bg-rose-100 text-rose-700 text-[10px] font-bold rounded-full uppercase";
+            }
+
+            // Temperature Calculation (Flattening the distribution)
+            let total = 0;
+            const adjustedWeights = data.words.map(w => {
+                const weight = Math.pow(w.weight, 1 - (chaosVal * 0.98));
+                total += weight;
+                return weight;
+            });
+
+            const probabilities = adjustedWeights.map(w => (w / total) * 100);
+
+            // Update Chart
+            probChart.data.labels = data.words.map(w => w.text);
+            probChart.data.datasets[0].data = probabilities;
+            probChart.data.datasets[0].backgroundColor = data.words.map(w => w.color);
+            probChart.update('none');
+        }
+
+        function generate() {
+            const btn = document.getElementById('generateBtn');
+            const target = document.getElementById('generatedWord');
+            const data = scenarios[currentMode];
+            
+            btn.disabled = true;
+            target.innerText = "thinking...";
+            target.className = "text-slate-300 italic bg-slate-50 px-4 py-1 rounded-xl shadow-inner animate-pulse";
+
+            setTimeout(() => {
+                const random = Math.random() * 100;
+                let cumulative = 0;
+                let picked = data.words[0].text;
+
+                const probs = probChart.data.datasets[0].data;
+                for(let i=0; i < probs.length; i++) {
+                    cumulative += probs[i];
+                    if(random <= cumulative) {
+                        picked = data.words[i].text;
+                        break;
+                    }
+                }
+
+                // Show Result
+                target.innerText = picked;
+                target.className = "text-indigo-600 bg-white px-4 py-1 rounded-xl shadow-sm border-2 border-indigo-400 font-bold animate-word";
+                
+                // Update History
+                const history = document.getElementById('historyStrip');
+                if(history.innerText.includes('Awaiting')) history.innerHTML = '';
+                const item = document.createElement('div');
+                item.className = "shrink-0 px-3 py-1 bg-white border border-slate-200 rounded-lg text-[10px] font-bold text-slate-600 shadow-sm animate-word";
+                item.innerText = picked;
+                history.prepend(item);
+
+                btn.disabled = false;
+            }, 600);
+        }
+
+        function switchScenario(mode) {
+            currentMode = mode;
+            document.querySelectorAll('.tab-btn').forEach(btn => btn.classList.remove('active'));
+            document.getElementById(`tab-${mode}`).classList.add('active');
+            updateSimulation();
+            document.getElementById('historyStrip').innerHTML = '<span class="text-slate-300 text-xs italic">Awaiting first generation...</span>';
+        }
+
+        // --- LISTENERS ---
+        document.getElementById('chaosSlider').addEventListener('input', updateSimulation);
+        document.getElementById('generateBtn').addEventListener('click', generate);
+
+        window.onload = initChart;
+
+    </script>
+</body>
+</html>
